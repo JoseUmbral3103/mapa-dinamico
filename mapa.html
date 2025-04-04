@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ejemplo de Google Maps con Polylines</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+        .info {
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="info">
+        <h3>Ejemplo de Google Maps con Polylines</h3>
+        <p>Este ejemplo muestra cómo dibujar líneas en un mapa de Google Maps.</p>
+        <p><strong>Puedes hacer clic en cualquier punto de la ruta para ver su información.</strong></p>
+        <div id="rutaInfo"></div>
+    </div>
+
+    <script>
+        // Función que se ejecutará cuando la API de Google Maps esté cargada
+        function initMap() {
+            // Coordenadas de ejemplo en Madrid
+            var rutaPuntos = [
+                {lat: 40.416775, lng: -3.703790, nombre: 'Puerta del Sol 2'}, // Puerta del Sol
+                {lat: 40.420509, lng: -3.705259, nombre: 'Gran Vía 2'}, // Gran Vía
+                {lat: 40.423852, lng: -3.712179, nombre: 'Plaza de España'}, // Plaza de España
+                {lat: 40.425361, lng: -3.719068, nombre: 'Templo de Debod'}, // Templo de Debod
+                {lat: 40.418889, lng: -3.714684, nombre: 'Palacio Real'}  // Palacio Real
+            ];
+
+            // Crear un mapa centrado en Madrid
+            var map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 13,
+                center: {lat: 40.416775, lng: -3.703790},
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+            });
+
+            // Crear la polyline
+            var polyline = new google.maps.Polyline({
+                path: rutaPuntos,
+                geodesic: true,
+                strokeColor: '#0000FF',
+                strokeOpacity: 0.7,
+                strokeWeight: 5
+            });
+
+            // Añadir la polyline al mapa
+            polyline.setMap(map);
+
+            // Añadir marcadores e infowindows para todos los puntos
+            var bounds = new google.maps.LatLngBounds();
+            var markers = [];
+            var infoWindows = [];
+
+            rutaPuntos.forEach(function(punto, index) {
+                // Crear infowindow para cada punto
+                var infowindow = new google.maps.InfoWindow({
+                    content: '<div><strong>' + punto.nombre + '</strong></div>'
+                });
+                infoWindows.push(infowindow);
+
+                // Diferente tipo de marcador para inicio/fin vs. puntos intermedios
+                if (index === 0 || index === rutaPuntos.length - 1) {
+                    // Marcador estándar para inicio y fin
+                    var marker = new google.maps.Marker({
+                        position: punto,
+                        map: map,
+                        title: punto.nombre,
+                        animation: google.maps.Animation.DROP,
+                        zIndex: 2
+                    });
+                    
+                    // Añadir evento click
+                    marker.addListener('click', function() {
+                        // Cerrar todas las infowindows abiertas
+                        infoWindows.forEach(function(iw) {
+                            iw.close();
+                        });
+                        infowindow.open(map, marker);
+                    });
+                    
+                    markers.push(marker);
+                } else {
+                    // Para puntos intermedios, usar marcadores más pequeños pero clickables
+                    var marker = new google.maps.Marker({
+                        position: punto,
+                        map: map,
+                        title: punto.nombre,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 7,
+                            fillColor: '#FF7800',
+                            fillOpacity: 0.8,
+                            strokeColor: '#000000',
+                            strokeWeight: 1
+                        },
+                        zIndex: 1
+                    });
+                    
+                    // Añadir evento click
+                    marker.addListener('click', function() {
+                        // Cerrar todas las infowindows abiertas
+                        infoWindows.forEach(function(iw) {
+                            iw.close();
+                        });
+                        infowindow.open(map, marker);
+                    });
+                    
+                    markers.push(marker);
+                }
+
+                // Extender los límites para ajustar todos los puntos
+                bounds.extend(new google.maps.LatLng(punto.lat, punto.lng));
+            });
+
+            // Ajustar el mapa para mostrar todos los puntos
+            map.fitBounds(bounds);
+
+            // Calcular distancia total
+            var distanciaTotal = calcularDistanciaTotal(rutaPuntos);
+            document.getElementById('rutaInfo').innerHTML = '<h4>Información de la ruta</h4>' +
+                                                           '<p>Distancia total: ' + distanciaTotal + ' km</p>' +
+                                                           '<p>Puntos: ' + rutaPuntos.length + '</p>';
+        }
+
+        // Función para calcular la distancia entre dos puntos en km usando la fórmula haversine
+        function calcularDistancia(punto1, punto2) {
+            var R = 6371; // Radio de la Tierra en km
+            var dLat = (punto2.lat - punto1.lat) * Math.PI / 180;
+            var dLon = (punto2.lng - punto1.lng) * Math.PI / 180;
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(punto1.lat * Math.PI / 180) * Math.cos(punto2.lat * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            var d = R * c;
+            return d;
+        }
+
+        // Función para calcular la distancia total
+        function calcularDistanciaTotal(puntos) {
+            var total = 0;
+            for (var i = 0; i < puntos.length - 1; i++) {
+                total += calcularDistancia(puntos[i], puntos[i+1]);
+            }
+            return total.toFixed(2); // Redondear a 2 decimales
+        }
+    </script>
+
+    <!-- Cargar la API de Google Maps con tu clave de API -->
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDxC-ov7rgxOAbbBwDRX4idiz49XXyPUFA&callback=initMap">
+    </script>
+</body>
+</html>
